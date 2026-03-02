@@ -1,59 +1,73 @@
 # ScienceDirect Skills for Claude Code
 
-A set of [Claude Code](https://docs.anthropic.com/en/docs/claude-code) skills and an agent for interacting with ScienceDirect (Elsevier) via Chrome DevTools MCP. Search papers, browse journals, extract metadata, export citations, and download PDFs — all from the CLI.
+[English](#english) | [中文](#中文)
 
-## Skills
+| WeChat Official Account (公众号) | WeChat Group (微信群) | Discord |
+|:---:|:---:|:---:|
+| <img src="qrcode_for_gh_a1c14419b847_258.jpg" width="200"> | <img src="0309.jpg" width="200"> | [Join Discord](https://discord.gg/tGd5vTDASg) |
+| 未来论文实验室 | 扫码加入交流群 | English & Chinese |
 
-| Skill | Description |
-|-------|-------------|
-| `sd-search` | Basic keyword search on ScienceDirect |
-| `sd-advanced-search` | Filtered search (author, journal, year, title, keywords) |
-| `sd-parse-results` | Re-parse the current search results page (internal) |
-| `sd-navigate-pages` | Pagination, sort order, results-per-page |
-| `sd-paper-detail` | Extract full article metadata (abstract, authors, DOI, etc.) |
-| `sd-journal-browse` | Browse journal info, impact factor, issues, articles |
-| `sd-download` | Download article PDFs to local disk |
-| `sd-export` | Export citations as RIS/BibTeX/text, push to Zotero |
+---
 
-## Agent
+<a id="english"></a>
 
-| Agent | Description |
-|-------|-------------|
-| `sd-researcher` | Research assistant that coordinates all skills above |
+## English
 
-## Prerequisites
+[Claude Code](https://docs.anthropic.com/en/docs/claude-code) skills that let Claude interact with [ScienceDirect (Elsevier)](https://www.sciencedirect.com) through Chrome DevTools MCP.
 
-- [Claude Code](https://docs.anthropic.com/en/docs/claude-code) CLI
-- Chrome DevTools MCP server (e.g. [`anthropics/chrome-devtools`](https://www.npmjs.com/package/@anthropic-ai/chrome-devtools-mcp))
-- For PDF download & citation export: institutional or personal ScienceDirect access
-- For Zotero push: [Zotero](https://www.zotero.org/) desktop running locally (Connector API on port 23119)
+Search papers, browse journals, extract metadata, export citations, download PDFs, and push to Zotero — all from the Claude Code CLI.
 
-## Installation
+### Prerequisites
 
-### 1. Copy skills into your project
+- [Claude Code](https://docs.anthropic.com/en/docs/claude-code) CLI installed
+- Chrome browser (institutional or personal login for PDF download & export)
+- [Zotero](https://www.zotero.org/) desktop app (optional, for citation export)
+- Python 3 (optional, for Zotero push script)
 
-Copy the `skills/` and `agents/` directories into your project's `.claude/` directory:
+### Skills
 
-```
-your-project/
-  .claude/
-    skills/
-      sd-search/SKILL.md
-      sd-advanced-search/SKILL.md
-      sd-parse-results/SKILL.md
-      sd-navigate-pages/SKILL.md
-      sd-paper-detail/SKILL.md
-      sd-journal-browse/SKILL.md
-      sd-download/SKILL.md
-      sd-export/SKILL.md
-      sd-export/scripts/push_to_zotero.py
-    agents/
-      sd-researcher.md
+| Skill | Description | Invocation |
+|-------|-------------|------------|
+| `sd-search` | Keyword search with structured result extraction | `/sd-search machine learning` |
+| `sd-advanced-search` | Filtered search: author, journal, year, title, keywords | `/sd-advanced-search author: Smith year: 2024 deep learning` |
+| `sd-parse-results` | Re-parse an existing search results page | _(internal)_ |
+| `sd-navigate-pages` | Pagination, sort order, results-per-page | `/sd-navigate-pages next` |
+| `sd-paper-detail` | Extract full article metadata (abstract, authors, DOI, etc.) | `/sd-paper-detail S0957417426005245` |
+| `sd-journal-browse` | Browse journal info, impact factor, issues, articles | `/sd-journal-browse Nature Energy` |
+| `sd-download` | Download article PDFs to local disk | `/sd-download S0957417426005245` |
+| `sd-export` | Export citations as RIS/BibTeX/text, push to Zotero | `/sd-export S0957417426005245 format: zotero` |
+
+### Agent
+
+**`sd-researcher`** — orchestrates all 8 skills. Handles Cloudflare captcha detection (auto-clicks or pauses for manual resolution), and supports multi-step workflows like "search → detail → export to Zotero → download PDF".
+
+### Installation
+
+#### 1. Install Chrome DevTools MCP server
+
+```bash
+claude mcp add chrome-devtools -- npx -y chrome-devtools-mcp@latest
 ```
 
-### 2. Configure Chrome DevTools MCP
+#### 2. Install ScienceDirect skills
 
-Add the Chrome DevTools MCP server to your `.claude.json` with anti-detection flags:
+```bash
+git clone https://github.com/cookjohn/sd-skills.git
+cd sd-skills
+cp -r skills/ agents/ .claude/
+```
+
+Or add to an existing project:
+
+```bash
+git clone https://github.com/cookjohn/sd-skills.git /tmp/sd-skills
+cp -r /tmp/sd-skills/skills/ your-project/.claude/skills/
+cp -r /tmp/sd-skills/agents/ your-project/.claude/agents/
+```
+
+#### 3. Configure anti-detection (recommended)
+
+Add to your `.claude.json` to prevent Cloudflare captcha loops on PDF downloads:
 
 ```json
 {
@@ -62,7 +76,7 @@ Add the Chrome DevTools MCP server to your `.claude.json` with anti-detection fl
       "command": "npx",
       "args": [
         "-y",
-        "@anthropic-ai/chrome-devtools-mcp@latest",
+        "chrome-devtools-mcp@latest",
         "--ignoreDefaultChromeArg=--enable-automation",
         "--ignoreDefaultChromeArg=--disable-infobars",
         "--chromeArg=--disable-blink-features=AutomationControlled"
@@ -72,53 +86,148 @@ Add the Chrome DevTools MCP server to your `.claude.json` with anti-detection fl
 }
 ```
 
-The `--ignoreDefaultChromeArg` and `--chromeArg` flags prevent Cloudflare bot detection. Without them, PDF downloads will be blocked by a captcha loop.
-
-## Usage
-
-### Invoke individual skills
-
-```
-/sd-search machine learning
-/sd-paper-detail S0957417426005245
-/sd-download S0957417426005245
-/sd-export S0957417426005245 format: zotero
-```
-
-### Use the research agent
-
-The `sd-researcher` agent coordinates all skills for complex workflows:
-
-```
-Search ScienceDirect for recent papers on digital twins in manufacturing,
-show me the top 3, export their citations to Zotero, and download the PDFs.
-```
-
-## Anti-Detection
-
-ScienceDirect uses Cloudflare for bot protection. This project handles it at three layers:
-
-1. **Chrome flags** (MCP config): Removes `--enable-automation`, adds `--disable-blink-features=AutomationControlled`
-2. **initScript** (every navigation): Hides `navigator.webdriver` from page scripts
-3. **Turnstile auto-click** (fallback): If a Cloudflare checkbox appears, skills auto-click it via CDP
-
-After solving one captcha per session, subsequent navigations work without interruption.
-
-## Zotero Integration
-
-The `sd-export` skill can push citations directly to a running Zotero instance:
-
-- **RIS import**: Sends RIS data to Zotero's `/connector/import` endpoint
-- **JSON import**: Structured metadata via `/connector/saveItems` with optional PDF attachment
-- **Idempotent**: Uses deterministic session IDs (content hash) — duplicate pushes are safely ignored
-
-The bundled `push_to_zotero.py` script can also be used standalone:
+#### 4. Launch Claude Code
 
 ```bash
-python scripts/push_to_zotero.py --ris-file citations.ris
-python scripts/push_to_zotero.py --json paper_data.json
-python scripts/push_to_zotero.py --list  # show Zotero collections
+claude
 ```
+
+Skills and agent are picked up automatically. Try `/sd-search deep learning` to verify.
+
+### How It Works
+
+All skills use async `evaluate_script` calls via Chrome DevTools MCP — no screenshot parsing or OCR. Each skill operates in 1-2 tool calls (navigate + evaluate_script), making interactions fast and reliable.
+
+Key design choices:
+- **Single async script per operation** — replaces multi-step snapshot → click → wait_for patterns
+- **URL navigation over form interaction** — ScienceDirect URL parameters are stable; constructing URLs is more reliable than clicking UI elements
+- **PII as primary key** — all operations (detail, download, export) use the article's Publisher Item Identifier
+- **Cloudflare-aware** — 3-layer anti-detection (Chrome flags + initScript + Turnstile auto-click); after solving one captcha per session, all subsequent requests work
+- **Zotero integration** — deterministic session IDs for idempotent push; supports RIS, structured JSON, and PDF attachment upload
+
+### Project Structure
+
+```
+skills/
+├── sd-search/SKILL.md              # Basic keyword search
+├── sd-advanced-search/SKILL.md     # Filtered search (author, journal, year, etc.)
+├── sd-parse-results/SKILL.md       # Parse existing results page
+├── sd-navigate-pages/SKILL.md      # Pagination & sorting
+├── sd-paper-detail/SKILL.md        # Paper metadata extraction
+├── sd-journal-browse/SKILL.md      # Journal info & issue browsing
+├── sd-download/SKILL.md            # PDF download with Cloudflare handling
+└── sd-export/                      # Citation export & Zotero
+    ├── SKILL.md
+    └── scripts/
+        └── push_to_zotero.py       # Zotero Connector API client
+agents/
+└── sd-researcher.md                # Agent: orchestrates all skills
+```
+
+---
+
+<a id="中文"></a>
+
+## 中文
+
+| 公众号 | 微信交流群 | Discord |
+|:---:|:---:|:---:|
+| <img src="qrcode_for_gh_a1c14419b847_258.jpg" width="200"> | <img src="0309.jpg" width="200"> | [加入 Discord](https://discord.gg/tGd5vTDASg) |
+| 未来论文实验室 | 扫码加入交流群 | 中英文交流 |
+
+让 [Claude Code](https://docs.anthropic.com/en/docs/claude-code) 通过 Chrome DevTools MCP 操作 [ScienceDirect (Elsevier)](https://www.sciencedirect.com) 的技能集。
+
+支持论文检索、期刊浏览、元数据提取、引用导出、PDF 下载、推送到 Zotero 等功能，全部在 Claude Code 命令行中完成。
+
+### 前置要求
+
+- 已安装 [Claude Code](https://docs.anthropic.com/en/docs/claude-code) CLI
+- Chrome 浏览器（下载和导出需机构或个人账号登录）
+- [Zotero](https://www.zotero.org/) 桌面端（可选，用于引用导出）
+- Python 3（可选，用于 Zotero 推送脚本）
+
+### 技能列表
+
+| 技能 | 功能 | 调用方式 |
+|------|------|----------|
+| `sd-search` | 关键词检索，返回结构化结果 | `/sd-search machine learning` |
+| `sd-advanced-search` | 高级检索：作者、期刊、年份、标题、关键词 | `/sd-advanced-search author: Smith year: 2024 deep learning` |
+| `sd-parse-results` | 重新解析当前搜索结果页 | _（内部调用）_ |
+| `sd-navigate-pages` | 翻页、排序、每页显示数量 | `/sd-navigate-pages next` |
+| `sd-paper-detail` | 提取论文完整元数据（摘要、作者、DOI 等） | `/sd-paper-detail S0957417426005245` |
+| `sd-journal-browse` | 浏览期刊信息、影响因子、期次、文章列表 | `/sd-journal-browse Nature Energy` |
+| `sd-download` | 下载论文 PDF 到本地 | `/sd-download S0957417426005245` |
+| `sd-export` | 导出引用为 RIS/BibTeX/纯文本，推送到 Zotero | `/sd-export S0957417426005245 format: zotero` |
+
+### 智能体
+
+**`sd-researcher`** — 统一调度全部 8 个技能。自动处理 Cloudflare 验证码（自动点击或暂停等待用户手动完成），支持"检索 → 详情 → 导出到 Zotero → 下载 PDF"等复合工作流。
+
+### 安装方法
+
+#### 1. 安装 Chrome DevTools MCP 服务器
+
+```bash
+claude mcp add chrome-devtools -- npx -y chrome-devtools-mcp@latest
+```
+
+#### 2. 安装 ScienceDirect 技能
+
+```bash
+git clone https://github.com/cookjohn/sd-skills.git
+cd sd-skills
+cp -r skills/ agents/ .claude/
+```
+
+添加到已有项目：
+
+```bash
+git clone https://github.com/cookjohn/sd-skills.git /tmp/sd-skills
+cp -r /tmp/sd-skills/skills/ your-project/.claude/skills/
+cp -r /tmp/sd-skills/agents/ your-project/.claude/agents/
+```
+
+#### 3. 配置反检测（推荐）
+
+在 `.claude.json` 中添加以下配置，防止 PDF 下载时触发 Cloudflare 验证码循环：
+
+```json
+{
+  "mcpServers": {
+    "chrome-devtools": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "chrome-devtools-mcp@latest",
+        "--ignoreDefaultChromeArg=--enable-automation",
+        "--ignoreDefaultChromeArg=--disable-infobars",
+        "--chromeArg=--disable-blink-features=AutomationControlled"
+      ]
+    }
+  }
+}
+```
+
+#### 4. 启动 Claude Code
+
+```bash
+claude
+```
+
+技能和智能体会自动加载。输入 `/sd-search deep learning` 验证是否正常。
+
+### 工作原理
+
+所有技能通过 Chrome DevTools MCP 的 `evaluate_script` 异步执行 JavaScript，无需截图识别或 OCR。每个操作仅需 1-2 次工具调用（导航 + 执行脚本），快速且稳定。
+
+核心设计：
+- **单次异步脚本** — 取代多步骤的 snapshot → click → wait_for 模式
+- **URL 导航优于表单交互** — ScienceDirect URL 参数稳定，构造 URL 比点击 UI 元素更可靠
+- **PII 为主键** — 所有操作（详情、下载、导出）均基于文章的 Publisher Item Identifier
+- **Cloudflare 感知** — 三层反检测（Chrome 启动参数 + initScript + Turnstile 自动点击）；每次会话解决一次验证码后，后续请求均可正常通过
+- **Zotero 集成** — 确定性会话 ID 实现幂等推送；支持 RIS、结构化 JSON 和 PDF 附件上传
+
+---
 
 ## License
 
