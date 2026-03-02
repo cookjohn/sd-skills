@@ -94,17 +94,6 @@ claude
 
 Skills and agent are picked up automatically. Try `/sd-search deep learning` to verify.
 
-### How It Works
-
-All skills use async `evaluate_script` calls via Chrome DevTools MCP — no screenshot parsing or OCR. Each skill operates in 1-2 tool calls (navigate + evaluate_script), making interactions fast and reliable.
-
-Key design choices:
-- **Single async script per operation** — replaces multi-step snapshot → click → wait_for patterns
-- **URL navigation over form interaction** — ScienceDirect URL parameters are stable; constructing URLs is more reliable than clicking UI elements
-- **PII as primary key** — all operations (detail, download, export) use the article's Publisher Item Identifier
-- **Cloudflare-aware** — 3-layer anti-detection (Chrome flags + initScript + Turnstile auto-click); after solving one captcha per session, all subsequent requests work
-- **Zotero integration** — deterministic session IDs for idempotent push; supports RIS, structured JSON, and PDF attachment upload
-
 ### Project Structure
 
 ```
@@ -187,9 +176,9 @@ cp -r /tmp/sd-skills/skills/ your-project/.claude/skills/
 cp -r /tmp/sd-skills/agents/ your-project/.claude/agents/
 ```
 
-#### 3. 配置反检测（推荐）
+#### 3. Configure anti-detection（推荐）
 
-在 `.claude.json` 中添加以下配置，防止 PDF 下载时触发 Cloudflare 验证码循环：
+在 `.claude.json` 中添加以下配置，优化 PDF 下载体验：
 
 ```json
 {
@@ -215,17 +204,6 @@ claude
 ```
 
 技能和智能体会自动加载。输入 `/sd-search deep learning` 验证是否正常。
-
-### 工作原理
-
-所有技能通过 Chrome DevTools MCP 的 `evaluate_script` 异步执行 JavaScript，无需截图识别或 OCR。每个操作仅需 1-2 次工具调用（导航 + 执行脚本），快速且稳定。
-
-核心设计：
-- **单次异步脚本** — 取代多步骤的 snapshot → click → wait_for 模式
-- **URL 导航优于表单交互** — ScienceDirect URL 参数稳定，构造 URL 比点击 UI 元素更可靠
-- **PII 为主键** — 所有操作（详情、下载、导出）均基于文章的 Publisher Item Identifier
-- **Cloudflare 感知** — 三层反检测（Chrome 启动参数 + initScript + Turnstile 自动点击）；每次会话解决一次验证码后，后续请求均可正常通过
-- **Zotero 集成** — 确定性会话 ID 实现幂等推送；支持 RIS、结构化 JSON 和 PDF 附件上传
 
 ---
 
